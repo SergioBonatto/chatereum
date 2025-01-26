@@ -3,7 +3,7 @@
 
 1. Clone o repositório:
     ```sh
-    git clone https://github.com/seu-usuario/chatereum.git
+    git clone https://github.com/sergiobonatto/chatereum.git
     cd chatereum
     ```
 
