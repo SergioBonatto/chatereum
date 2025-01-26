@@ -1,26 +1,22 @@
-import SimplePeer from 'simple-peer';
-import io from 'socket.io-client';
-
 const socket = io('http://localhost:3000');
 let peer = null;
 
 function createRoom() {
     socket.emit('create-room');
     socket.once('room-created', (roomId) => {
-        console.log('Room created:', roomId);
-        setupPeer(true);
+        document.getElementById('peer-data').value = roomId;
+        setupPeer(true, roomId);
     });
 }
 
 function joinRoom(roomId) {
     socket.emit('join-room', roomId);
     socket.once('room-joined', () => {
-        console.log('Joined room:', roomId);
-        setupPeer(false);
+        setupPeer(false, roomId);
     });
 }
 
-function setupPeer(isInitiator) {
+function setupPeer(isInitiator, roomId) {
     peer = new SimplePeer({
         initiator: isInitiator,
         config: {
@@ -32,28 +28,49 @@ function setupPeer(isInitiator) {
 
     peer.on('signal', (data) => {
         socket.emit('signal', {
-            target: isInitiator ? 'guest' : 'host',
+            roomId: roomId,
             signal: data
         });
     });
 
-    socket.on('signal', (signal) => {
-        peer.signal(signal);
+    socket.on('signal', (data) => {
+        peer.signal(data.signal);
     });
 
     peer.on('connect', () => {
-        console.log('Peer connected');
+        document.querySelector('button:nth-of-type(1)').disabled = false;
+        appendMessage('Peer connected successfully!');
     });
 
     peer.on('data', (data) => {
-        console.log('Received:', data.toString());
+        const decryptedMessage = decryptMessage(data.toString());
+        appendMessage(`Peer: ${decryptedMessage}`);
     });
 }
 
 function sendMessage(message) {
-    if (peer) {
-        peer.send(message);
+    if (peer && peer.connected) {
+        const encryptedMessage = encryptMessage(message);
+        peer.send(encryptedMessage);
+        appendMessage(`You: ${message}`);
     }
 }
 
-export { createRoom, joinRoom, sendMessage };
+function connectToPeer(peerSignal) {
+    try {
+        peer.signal(JSON.parse(peerSignal));
+    } catch (e) {
+        appendMessage(`Connection error: ${e.message}`);
+    }
+}
+
+function appendMessage(message) {
+    const output = document.getElementById('output');
+    output.value += message + '\n';
+    output.scrollTop = output.scrollHeight;
+}
+
+window.createRoom = createRoom;
+window.joinRoom = joinRoom;
+window.sendMessage = sendMessage;
+window.connectToPeer = connectToPeer;

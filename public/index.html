@@ -1,21 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chatereum</title>
+    <title>Chatereum P2P Chat</title>
 </head>
 <body>
-  <h1>Chatereum</h1>
-  <textarea id="output" rows="10" cols="50" readonly></textarea><br>
-  <input id="message" placeholder="Digite sua mensagem">
-  <button disabled>Enviar</button><br> <!-- Disabled by default -->
-  <textarea id="peer-data" rows="3" cols="50" placeholder="Cole o sinal de outro nó"></textarea><br>
-  <button>Conectar ao Peer</button>
+    <h1>Chatereum</h1>
+    <textarea id="output" rows="10" cols="50" readonly></textarea><br>
+    <input id="message" placeholder="Digite sua mensagem">
+    <button onclick="sendMessage(document.getElementById('message').value)" disabled>Enviar</button><br>
+    <textarea id="peer-data" rows="3" cols="50" placeholder="Cole o ID da sala ou sinal"></textarea><br>
+    <button onclick="createRoom()">Criar Sala</button>
+    <button onclick="joinRoom(document.getElementById('peer-data').value)">Conectar à Sala</button>
 
-  <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <script type="module">
-    import { appendMessage } from './ui.js';
-  </script>
+    <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="/crypto.js"></script>
+    <script src="/blockchain.js"></script>
+    <script src="/peer.js"></script>
 </body>
 </html>
