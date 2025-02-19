@@ -1,7 +1,7 @@
-import { createLibp2p } from 'https://cdn.jsdelivr.net/npm/libp2p/dist/index.min.js';
+import { EventEmitter } from 'https://cdn.skypack.dev/events';
+import { createLibp2p } from 'https://cdn.jsdelivr.net/npm/libp2p@0.45.9/dist/src/index.min.js';
 import { webRTCStar } from 'https://cdn.jsdelivr.net/npm/@libp2p/webrtc-star/dist/index.min.js';
 import { noise } from 'https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-noise/dist/index.min.js';
-import { bootstrap } from 'https://cdn.jsdelivr.net/npm/@libp2p/bootstrap/dist/index.min.js';
 import { pubsubPeerDiscovery } from 'https://cdn.jsdelivr.net/npm/@libp2p/pubsub-peer-discovery/dist/index.min.js';
 
 // Variável global para armazenar a instância do node
@@ -19,11 +19,6 @@ export async function createNode() {
     transports: [webRTCTransport],
     connectionEncryption: [noise()],
     peerDiscovery: [
-      bootstrap({
-        list: [
-          '/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTiezGAk'
-        ]
-      }),
       pubsubPeerDiscovery()
     ]
   })

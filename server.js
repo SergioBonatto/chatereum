@@ -15,6 +15,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static('public'));
 app.use('/node_modules', express.static(join(__dirname, 'node_modules')));
 
+
 const rooms = {};
 
 io.on('connection', (socket) => {
