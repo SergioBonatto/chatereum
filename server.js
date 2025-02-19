@@ -12,7 +12,10 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
+// Serve arquivos estáticos
+app.use(express.static('public'));
+app.use('/node_modules', express.static(join(__dirname, 'node_modules')));
+
 const rooms = {};
 
 io.on('connection', (socket) => {
