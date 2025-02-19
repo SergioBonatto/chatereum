@@ -1,117 +1,77 @@
-const Libp2p = require('libp2p')
-const TCP = require('libp2p-tcp')
-const Mplex = require('libp2p-mplex')
-const { NOISE } = require('libp2p-noise')
-const Bootstrap = require('libp2p-bootstrap')
-const DHT = require('libp2p-kad-dht')
-const multiaddr = require('multiaddr')
-
-let node = null;
+import { createLibp2p } from 'libp2p'
+import { WebRTCStar } from '@libp2p/webrtc-star'
+import { noise } from '@chainsafe/libp2p-noise'
+import { bootstrap } from '@libp2p/bootstrap'
+import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 
 async function createNode() {
-  node = await Libp2p.create({
+  const webRTCStar = new WebRTCStar()
+
+  const node = await createLibp2p({
     addresses: {
-      listen: ['/ip4/0.0.0.0/tcp/0']
+      listen: [
+        '/dns4/wrtc-star1.par.dwebops.pub/tcp/443/wss/p2p-webrtc-star'
+      ]
     },
-    modules: {
-      transport: [TCP],
-      streamMuxer: [Mplex],
-      connEncryption: [NOISE],
-      peerDiscovery: [Bootstrap, DHT]
-    },
-    config: {
-      peerDiscovery: {
-        autoDial: true, // Automatically connect to discovered peers
-        bootstrap: {
-          list: [
-            // Here you would list known bootstrap nodes for your network
-            '/ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ',
-            '/ip4/104.236.176.52/tcp/4001/ipfs/QmSoLnSGccFuZQJzRadHn95W2CrSFmZuTdDWP8HXaHca9z'
-          ]
-        },
-        dht: {
-          enabled: true,
-          randomWalk: {
-            enabled: true
-          }
-        }
-      }
-    }
-  });
+    transports: [webRTCStar],
+    connectionEncryption: [noise()],
+    peerDiscovery: [
+      bootstrap({
+        list: [
+          '/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTiezGAk'
+        ]
+      }),
+      pubsubPeerDiscovery()
+    ]
+  })
 
-  node.on('peer:discovery', (peerInfo) => {
-    console.log('Discovered:', peerInfo.id.toB58String());
-    document.getElementById('peer-data').value = peerInfo.id.toB58String();
-  });
+  // Eventos de descoberta e conexão
+  node.addEventListener('peer:discovery', (evt) => {
+    const peer = evt.detail
+    console.log('Peer descoberto:', peer.id.toString())
+  })
 
-  node.handle('/chat/1.0.0', ({ stream }) => {
-    pump(stream, sink((data) => {
-      const decryptedMessage = decryptMessage(data.toString());
-      appendMessage(`Peer: ${decryptedMessage}`);
-    }), (err) => {
-      if (err) console.error(err)
-    })
-  });
+  node.addEventListener('peer:connect', (evt) => {
+    const peer = evt.detail
+    console.log('Conectado ao peer:', peer.id.toString())
+    document.getElementById('peer-data').value = peer.id.toString()
+  })
 
-  node.on('peer:connect', (connection) => {
-    document.querySelector('button:nth-of-type(1)').disabled = false;
-    appendMessage('Peer connected successfully!');
-  });
-
-  await node.start();
-  console.log('Node started with ID:', node.peerId.toB58String());
-
-  // Store self in DHT for discovery
-  await node.contentRouting.provide(node.peerId, '/chat/1.0.0');
+  await node.start()
+  return node
 }
 
-function findAndConnectToPeer() {
-  if (!node) return appendMessage('Node not initialized');
-
-  node.contentRouting.findProviders('/chat/1.0.0', 1).then((providers) => {
-    if (providers.length > 0) {
-      const peerId = providers[0].id;
-      node.dialProtocol(peerId, '/chat/1.0.0').then(({ stream }) => {
-        pump(stream, sink((data) => {
-          const decryptedMessage = decryptMessage(data.toString());
-          appendMessage(`Peer: ${decryptedMessage}`);
-        }), (err) => {
-          if (err) console.error(err)
-        });
-        appendMessage(`Connected to peer: ${peerId.toB58String()}`);
-      }).catch(err => {
-        appendMessage(`Connection error: ${err.message}`);
-      });
-    } else {
-      appendMessage('No peers providing /chat/1.0.0 found');
-    }
-  });
-}
-
-function sendMessage(message) {
-  if (node) {
-    const encryptedMessage = encryptMessage(message);
-    // Assume we have at least one connection
-    const peers = node.peerStore.peers.values();
-    for (const peer of peers) {
-      node.dialProtocol(peer.id, '/chat/1.0.0').then(({ stream }) => {
-        stream.write(Buffer.from(encryptedMessage));
-        appendMessage(`You: ${message}`);
-      }).catch(err => {
-        appendMessage(`Error sending message: ${err.message}`);
-      });
+export async function connectToPeer(peerId) {
+    try {
+      const connection = await node.dial(peerId)
+      console.log('Conectado ao peer:', connection.remotePeer.toString())
+      return connection
+    } catch (err) {
+      console.error('Erro ao conectar:', err)
+      throw err
     }
   }
-}
 
-function appendMessage(message) {
-  const output = document.getElementById('output');
-  output.value += message + '\n';
-  output.scrollTop = output.scrollHeight;
-}
+  export async function sendMessageToPeer(peerId, message) {
+    try {
+      const connection = await node.dial(peerId)
+      const stream = await connection.newStream('/chat/1.0.0')
+      await stream.sink([message])
+    } catch (err) {
+      console.error('Erro ao enviar mensagem:', err)
+      throw err
+    }
+  }
 
-window.createNode = createNode;
-window.findAndConnectToPeer = findAndConnectToPeer;
-window.sendMessage = sendMessage;
-
-// Note: You need to implement `encryptMessage` and `decryptMessage` functions for secure communication.
+  export async function setupChatProtocol(node) {
+    await node.handle('/chat/1.0.0', async ({ stream }) => {
+      try {
+        for await (const msg of stream.source) {
+          const message = new TextDecoder().decode(msg)
+          document.getElementById('output').value += `${message}\n`
+        }
+      } catch (err) {
+        console.error('Erro no protocolo de chat:', err)
+      }
+    })
+  }

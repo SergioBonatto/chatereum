@@ -18,5 +18,18 @@
     <script src="/crypto.js"></script>
     <script src="/blockchain.js"></script>
     <script src="/peer.js"></script>
+    <script type="module">
+        import { createNode } from './peer.js'
+
+        window.addEventListener('load', async () => {
+          try {
+            const node = await createNode()
+            window.node = node // Para acesso global
+            document.querySelector('button').disabled = false
+          } catch (err) {
+            console.error('Erro ao iniciar node:', err)
+          }
+        })
+      </script>
 </body>
 </html>
