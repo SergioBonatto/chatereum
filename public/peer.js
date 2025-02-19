@@ -1,76 +1,77 @@
-const socket = io('http://localhost:3000');
-let peer = null;
+import { EventEmitter } from 'https://cdn.skypack.dev/events';
+import { createLibp2p } from 'https://cdn.jsdelivr.net/npm/libp2p@0.45.9/dist/src/index.min.js';
+import { webRTCStar } from 'https://cdn.jsdelivr.net/npm/@libp2p/webrtc-star/dist/index.min.js';
+import { noise } from 'https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-noise/dist/index.min.js';
+import { pubsubPeerDiscovery } from 'https://cdn.jsdelivr.net/npm/@libp2p/pubsub-peer-discovery/dist/index.min.js';
 
-function createRoom() {
-    socket.emit('create-room');
-    socket.once('room-created', (roomId) => {
-        document.getElementById('peer-data').value = roomId;
-        setupPeer(true, roomId);
-    });
+// Variável global para armazenar a instância do node
+let globalNode = null;
+
+export async function createNode() {
+  const webRTCTransport = webRTCStar()
+
+  const node = await createLibp2p({
+    addresses: {
+      listen: [
+        '/dns4/wrtc-star1.par.dwebops.pub/tcp/443/wss/p2p-webrtc-star'
+      ]
+    },
+    transports: [webRTCTransport],
+    connectionEncryption: [noise()],
+    peerDiscovery: [
+      pubsubPeerDiscovery()
+    ]
+  })
+
+  // Eventos de descoberta e conexão
+  node.addEventListener('peer:discovery', (evt) => {
+    const peer = evt.detail
+    console.log('Peer descoberto:', peer.id.toString())
+  })
+
+  node.addEventListener('peer:connect', (evt) => {
+    const peer = evt.detail
+    console.log('Conectado ao peer:', peer.id.toString())
+    document.getElementById('peer-data').value = peer.id.toString()
+  })
+
+  await node.start()
+  globalNode = node // Armazena o node globalmente
+  await setupChatProtocol(node)
+  return node
 }
 
-function joinRoom(roomId) {
-    socket.emit('join-room', roomId);
-    socket.once('room-joined', () => {
-        setupPeer(false, roomId);
-    });
-}
-
-function setupPeer(isInitiator, roomId) {
-    peer = new SimplePeer({
-        initiator: isInitiator,
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
-        }
-    });
-
-    peer.on('signal', (data) => {
-        socket.emit('signal', {
-            roomId: roomId,
-            signal: data
-        });
-    });
-
-    socket.on('signal', (data) => {
-        peer.signal(data.signal);
-    });
-
-    peer.on('connect', () => {
-        document.querySelector('button:nth-of-type(1)').disabled = false;
-        appendMessage('Peer connected successfully!');
-    });
-
-    peer.on('data', (data) => {
-        const decryptedMessage = decryptMessage(data.toString());
-        appendMessage(`Peer: ${decryptedMessage}`);
-    });
-}
-
-function sendMessage(message) {
-    if (peer && peer.connected) {
-        const encryptedMessage = encryptMessage(message);
-        peer.send(encryptedMessage);
-        appendMessage(`You: ${message}`);
-    }
-}
-
-function connectToPeer(peerSignal) {
+export async function connectToPeer(peerId) {
     try {
-        peer.signal(JSON.parse(peerSignal));
-    } catch (e) {
-        appendMessage(`Connection error: ${e.message}`);
+      const connection = await globalNode.dial(peerId)
+      console.log('Conectado ao peer:', connection.remotePeer.toString())
+      return connection
+    } catch (err) {
+      console.error('Erro ao conectar:', err)
+      throw err
     }
 }
 
-function appendMessage(message) {
-    const output = document.getElementById('output');
-    output.value += message + '\n';
-    output.scrollTop = output.scrollHeight;
+export async function sendMessageToPeer(peerId, message) {
+    try {
+      const connection = await globalNode.dial(peerId)
+      const stream = await connection.newStream('/chat/1.0.0')
+      await stream.sink([message])
+    } catch (err) {
+      console.error('Erro ao enviar mensagem:', err)
+      throw err
+    }
 }
 
-window.createRoom = createRoom;
-window.joinRoom = joinRoom;
-window.sendMessage = sendMessage;
-window.connectToPeer = connectToPeer;
+export async function setupChatProtocol(node) {
+    await node.handle('/chat/1.0.0', async ({ stream }) => {
+      try {
+        for await (const msg of stream.source) {
+          const message = new TextDecoder().decode(msg)
+          document.getElementById('output').value += `${message}\n`
+        }
+      } catch (err) {
+        console.error('Erro no protocolo de chat:', err)
+      }
+    })
+}

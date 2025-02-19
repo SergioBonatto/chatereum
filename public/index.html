@@ -14,9 +14,23 @@
 
     <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.skypack.dev/events"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="/crypto.js"></script>
     <script src="/blockchain.js"></script>
-    <script src="/peer.js"></script>
+    <script type="module" src="/peer.js"></script>
+<script type="module">
+  import { createNode } from './peer.js'
+
+        window.addEventListener('load', async () => {
+          try {
+            const node = await createNode()
+            window.node = node // Para acesso global
+            document.querySelector('button').disabled = false
+          } catch (err) {
+            console.error('Erro ao iniciar node:', err)
+          }
+        })
+      </script>
 </body>
 </html>

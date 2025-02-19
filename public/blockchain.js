@@ -1,7 +1,19 @@
-const blockchain = [];
+function isValidBlock(block, previousBlock) {
+    if (!previousBlock) return true; // Genesis block
 
-function calculateHash(message, previousHash) {
-    return CryptoJS.SHA256(`${message}${previousHash}${Date.now()}`).toString();
+    return block.previousHash === previousBlock.hash &&
+           block.hash === calculateHash(block.message, block.previousHash);
+}
+
+function isValidChain(chain) {
+    if (!Array.isArray(chain) || chain.length === 0) return false;
+
+    for (let i = 1; i < chain.length; i++) {
+        if (!isValidBlock(chain[i], chain[i-1])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function createBlock(message) {
