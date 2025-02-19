@@ -7,8 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 const rooms = {};
 
 io.on('connection', (socket) => {
