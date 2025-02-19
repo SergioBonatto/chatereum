@@ -1,11 +1,14 @@
 import { createLibp2p } from 'https://cdn.jsdelivr.net/npm/libp2p/dist/index.min.js';
-import { WebRTCStar } from 'https://cdn.jsdelivr.net/npm/@libp2p/webrtc-star/dist/index.min.js';
+import { webRTCStar } from 'https://cdn.jsdelivr.net/npm/@libp2p/webrtc-star/dist/index.min.js';
 import { noise } from 'https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-noise/dist/index.min.js';
 import { bootstrap } from 'https://cdn.jsdelivr.net/npm/@libp2p/bootstrap/dist/index.min.js';
 import { pubsubPeerDiscovery } from 'https://cdn.jsdelivr.net/npm/@libp2p/pubsub-peer-discovery/dist/index.min.js';
 
-async function createNode() {
-  const webRTCStar = new WebRTCStar()
+// Variável global para armazenar a instância do node
+let globalNode = null;
+
+export async function createNode() {
+  const webRTCTransport = webRTCStar()
 
   const node = await createLibp2p({
     addresses: {
@@ -13,7 +16,7 @@ async function createNode() {
         '/dns4/wrtc-star1.par.dwebops.pub/tcp/443/wss/p2p-webrtc-star'
       ]
     },
-    transports: [webRTCStar],
+    transports: [webRTCTransport],
     connectionEncryption: [noise()],
     peerDiscovery: [
       bootstrap({
@@ -38,32 +41,34 @@ async function createNode() {
   })
 
   await node.start()
+  globalNode = node // Armazena o node globalmente
+  await setupChatProtocol(node)
   return node
 }
 
 export async function connectToPeer(peerId) {
     try {
-      const connection = await node.dial(peerId)
+      const connection = await globalNode.dial(peerId)
       console.log('Conectado ao peer:', connection.remotePeer.toString())
       return connection
     } catch (err) {
       console.error('Erro ao conectar:', err)
       throw err
     }
-  }
+}
 
-  export async function sendMessageToPeer(peerId, message) {
+export async function sendMessageToPeer(peerId, message) {
     try {
-      const connection = await node.dial(peerId)
+      const connection = await globalNode.dial(peerId)
       const stream = await connection.newStream('/chat/1.0.0')
       await stream.sink([message])
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err)
       throw err
     }
-  }
+}
 
-  export async function setupChatProtocol(node) {
+export async function setupChatProtocol(node) {
     await node.handle('/chat/1.0.0', async ({ stream }) => {
       try {
         for await (const msg of stream.source) {
@@ -74,4 +79,4 @@ export async function connectToPeer(peerId) {
         console.error('Erro no protocolo de chat:', err)
       }
     })
-  }
+}
