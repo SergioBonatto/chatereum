@@ -1,8 +1,8 @@
-import { createLibp2p } from '/node_modules/libp2p/dist/index.js'
-import { WebRTCStar } from '/node_modules/@libp2p/webrtc-star/dist/index.js'
-import { noise } from '/node_modules/@chainsafe/libp2p-noise/dist/index.js'
-import { bootstrap } from '/node_modules/@libp2p/bootstrap/dist/index.js'
-import { pubsubPeerDiscovery } from '/node_modules/@libp2p/pubsub-peer-discovery/dist/index.js'
+import { createLibp2p } from 'https://cdn.jsdelivr.net/npm/libp2p/dist/index.min.js';
+import { WebRTCStar } from 'https://cdn.jsdelivr.net/npm/@libp2p/webrtc-star/dist/index.min.js';
+import { noise } from 'https://cdn.jsdelivr.net/npm/@chainsafe/libp2p-noise/dist/index.min.js';
+import { bootstrap } from 'https://cdn.jsdelivr.net/npm/@libp2p/bootstrap/dist/index.min.js';
+import { pubsubPeerDiscovery } from 'https://cdn.jsdelivr.net/npm/@libp2p/pubsub-peer-discovery/dist/index.min.js';
 
 async function createNode() {
   const webRTCStar = new WebRTCStar()
